@@ -1,0 +1,61 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { connectDB } from './config/database.js';
+import { errorHandler } from './middleware/auth.js';
+
+// استيراد الـ Routes الخاصة بك كما هي
+import authRoutes from './routes/authRoutes.js';
+import carRoutes from './routes/carRoutes.js';
+import modificationRoutes from './routes/modificationRoutes.js';
+import recommendationRoutes from './routes/recommendationRoutes.js';
+import configuratorRoutes from './routes/configuratorRoutes.js';
+import serviceRoutes from './routes/serviceRoutes.js';
+
+dotenv.config();
+
+const app = express();
+
+// إعدادات الـ Middleware الأساسية
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cors({
+  origin: true, 
+  credentials: true,
+}));
+
+// 1. مسارات الفحص السريع (Health Checks) 
+// وضعناها هنا لضمان الرد الفوري وتجنب خطأ 504
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'Backend is running' });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'Success', message: 'Top Speed API is Live!' });
+});
+
+// 2. Middleware الاتصال بقاعدة البيانات
+// يتم استدعاؤه فقط عند محاولة الوصول للمسارات الفعلية
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({ message: 'Database connection failed' });
+  }
+});
+
+// 3. تعريف المسارات (Routes)
+app.use('/api/auth', authRoutes);
+app.use('/api/cars', carRoutes);
+app.use('/api/modifications', modificationRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/configurator', configuratorRoutes);
+app.use('/api/service', serviceRoutes);
+
+// معالج الأخطاء
+app.use(errorHandler);
+
+// تصدير التطبيق لفيرسل
+export default app;
